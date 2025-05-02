@@ -47,7 +47,10 @@ public class UserService {
 
         return userRepository.save(user);
     }
-
+    @Transactional
+    public User updateUser(User user) {
+        return userRepository.save(user);
+    }
     @Transactional
     public void deleteAccount(Long userId) {
         User user = findById(userId);
@@ -55,6 +58,7 @@ public class UserService {
     }
 
     public UserDto convertToDto(User user) {
+
         return new UserDto(user.getId(), user.getName(), user.getEmail());
     }
 }
