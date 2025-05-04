@@ -1,4 +1,3 @@
-
 package com.tastyrecipes.application.controller;
 
 import com.tastyrecipes.application.dto.ApiResponse;
@@ -37,12 +36,13 @@ public class ReviewController {
     @PostMapping
     public ResponseEntity<ApiResponse> createReview(
             @PathVariable Long recipeId,
-            @Valid @RequestBody ReviewDto reviewDto,
+            @RequestBody ReviewDto reviewDto,  // Remove @Valid here
             Authentication authentication) {
 
         User user = userService.findByEmail(authentication.getName());
-        reviewDto.setRecipeId(recipeId); // Ensure recipeId from path is used
+        reviewDto.setRecipeId(recipeId); // Set recipeId from path variable
 
+        // Validate manually after setting recipeId
         Review review = reviewService.createReview(reviewDto, user.getId());
         ReviewDto createdReview = reviewService.convertToDto(review);
 

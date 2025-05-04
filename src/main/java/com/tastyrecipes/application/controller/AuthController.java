@@ -1,4 +1,3 @@
-
 package com.tastyrecipes.application.controller;
 
 import com.tastyrecipes.application.dto.ApiResponse;
@@ -15,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -32,16 +32,26 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponse> register(@Valid @RequestBody UserDto userDto) {
-        User user = userService.register(userDto);
-        UserDto registeredUser = userService.convertToDto(user);
+//    @PostMapping("/register")
+//    public ResponseEntity<ApiResponse> register(@Valid @RequestBody UserDto userDto) {
+//        User user = userService.register(userDto);
+//        UserDto registeredUser = userService.convertToDto(user);
+//
+//        return new ResponseEntity<>(
+//                new ApiResponse(true, "User registered successfully", registeredUser),
+//                HttpStatus.CREATED
+//        );
+//    }
+@PostMapping("/register")
+public ResponseEntity<ApiResponse> register(@Valid @RequestBody UserDto userDto) {
+    User user = userService.register(userDto);
+    UserDto registeredUser = userService.convertToDto(user);
 
-        return new ResponseEntity<>(
-                new ApiResponse(true, "User registered successfully", registeredUser),
-                HttpStatus.CREATED
-        );
-    }
+    return new ResponseEntity<>(
+            new ApiResponse(true, "User registered successfully", registeredUser),
+            HttpStatus.CREATED
+    );
+}
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse> login(@Valid @RequestBody AuthRequest authRequest) {
@@ -66,8 +76,13 @@ public class AuthController {
     }
 
     @DeleteMapping("/delete-account")
-    public ResponseEntity<ApiResponse> deleteAccount(Authentication authentication) {
-        String email = authentication.getName();
+    public ResponseEntity<ApiResponse> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse(false, "Authentication required"));
+        }
+
+        String email = userDetails.getUsername();
         User user = userService.findByEmail(email);
 
         userService.deleteAccount(user.getId());
