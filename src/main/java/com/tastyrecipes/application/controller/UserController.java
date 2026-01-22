@@ -56,30 +56,52 @@ public class UserController {
 
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse> updateProfile(
-            @Valid @RequestBody UserDto userDto,
+            @RequestBody UserDto userDto,
             Authentication authentication) {
 
         User currentUser = userService.findByEmail(authentication.getName());
 
-        // Only update allowed fields (name and email)
-        if (userDto.getName() != null) {
-            currentUser.setName(userDto.getName());
-        }
-
-        // If email is being changed, check if it's already in use
-        if (userDto.getEmail() != null && !userDto.getEmail().equals(currentUser.getEmail())) {
-            if (userService.existsByEmail(userDto.getEmail())) {
+        // Validate and update name if provided
+        if (userDto.getName() != null && !userDto.getName().trim().isEmpty()) {
+            if (userDto.getName().trim().length() < 2) {
                 return ResponseEntity.badRequest()
-                        .body(new ApiResponse(false, "Email already in use"));
+                        .body(new ApiResponse(false, "Name must be at least 2 characters long"));
             }
-            currentUser.setEmail(userDto.getEmail());
+            currentUser.setName(userDto.getName().trim());
         }
 
-        // Save updated user
-        User updatedUser = userService.updateUser(currentUser);
-        UserDto updatedUserDto = userService.convertToDto(updatedUser);
+        // Validate and update email if provided
+        if (userDto.getEmail() != null && !userDto.getEmail().trim().isEmpty()) {
+            String newEmail = userDto.getEmail().trim();
 
-        return ResponseEntity.ok(new ApiResponse(true, "Profile updated successfully", updatedUserDto));
+            // Check if email is different from current
+            if (!newEmail.equals(currentUser.getEmail())) {
+                // Validate email format
+                if (!newEmail.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                    return ResponseEntity.badRequest()
+                            .body(new ApiResponse(false, "Invalid email format"));
+                }
+
+                // Check if email is already in use
+                if (userService.existsByEmail(newEmail)) {
+                    return ResponseEntity.badRequest()
+                            .body(new ApiResponse(false, "Email already in use"));
+                }
+
+                currentUser.setEmail(newEmail);
+            }
+        }
+
+        try {
+            // Save updated user
+            User updatedUser = userService.updateUser(currentUser);
+            UserDto updatedUserDto = userService.convertToDto(updatedUser);
+
+            return ResponseEntity.ok(new ApiResponse(true, "Profile updated successfully", updatedUserDto));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, "Failed to update profile: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/change-password")
@@ -92,8 +114,9 @@ public class UserController {
         String currentPassword = passwordData.get("currentPassword");
         String newPassword = passwordData.get("newPassword");
 
-        // Validate current password
-        if (currentPassword == null || newPassword == null) {
+        // Validate passwords are provided
+        if (currentPassword == null || currentPassword.trim().isEmpty() ||
+                newPassword == null || newPassword.trim().isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse(false, "Current password and new password are required"));
         }
@@ -104,17 +127,22 @@ public class UserController {
                     .body(new ApiResponse(false, "Current password is incorrect"));
         }
 
-        // Validate new password (you may add more validation rules)
+        // Validate new password length
         if (newPassword.length() < 6) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse(false, "New password must be at least 6 characters long"));
         }
 
-        // Update password
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userService.updateUser(user);
+        try {
+            // Update password
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userService.updateUser(user);
 
-        return ResponseEntity.ok(new ApiResponse(true, "Password changed successfully"));
+            return ResponseEntity.ok(new ApiResponse(true, "Password changed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, "Failed to change password: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/recipes")
@@ -160,13 +188,17 @@ public class UserController {
 
         User currentUser = userService.findByEmail(authentication.getName());
 
-        // Only allow admin or self to delete account
+        // Only allow user to delete their own account
         if (!currentUser.getId().equals(userId)) {
             throw new UnauthorizedException("You are not authorized to delete this user");
         }
 
-        userService.deleteAccount(userId);
-
-        return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully"));
+        try {
+            userService.deleteAccount(userId);
+            return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse(false, "Failed to delete account: " + e.getMessage()));
+        }
     }
 }
