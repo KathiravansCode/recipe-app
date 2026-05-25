@@ -24,16 +24,19 @@ public class JwtUtil {
     @Value("${jwt.expiration:86400000}") // Default 24 hours
     private long jwtExpiration;
 
-    private SecretKey getSigningKey() {
+    private SecretKey getSignedKey() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String extractUsername(String token) {
+
         return extractClaim(token, Claims::getSubject);
     }
 
     public Date extractExpiration(String token) {
+
         return extractClaim(token, Claims::getExpiration);
     }
 
@@ -44,28 +47,30 @@ public class JwtUtil {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(getSignedKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
     private Boolean isTokenExpired(String token) {
+
         return extractExpiration(token).before(new Date());
     }
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
+        System.out.println(claims);
         return createToken(claims, userDetails.getUsername());
     }
 
-    private String createToken(Map<String, Object> claims, String subject) {
+    private String createToken(Map<String, Object> claims, String username) {
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(subject)
+                .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(getSignedKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 

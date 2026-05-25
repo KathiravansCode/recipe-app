@@ -15,10 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.UUID;
 
 @Service
 public class RecipeService {
@@ -27,8 +23,10 @@ public class RecipeService {
     @Autowired
     private UserService userService;
 
-    @Value("${file.upload-dir:uploads}")
-    private String uploadDir;
+    @Autowired
+    private S3Service s3Service;
+
+
 
 
 
@@ -57,8 +55,8 @@ public class RecipeService {
         recipe.setUser(user);
 
         if (image != null && !image.isEmpty()) {
-            String imagePath = saveImage(image);
-            recipe.setImageUrl(imagePath);
+            String imageUrl = s3Service.uploadImage(image);
+            recipe.setImageUrl(imageUrl);
         }
 
         return recipeRepository.save(recipe);
@@ -78,18 +76,11 @@ public class RecipeService {
         recipe.setSteps(recipeDto.getSteps());
 
         if (image != null && !image.isEmpty()) {
-            // Delete old image if exists
             if (recipe.getImageUrl() != null) {
-                try {
-                    Files.deleteIfExists(Paths.get(recipe.getImageUrl()));
-                } catch (IOException e) {
-                    // Log error but continue
-                    System.err.println("Failed to delete old image: " + e.getMessage());
-                }
+                s3Service.deleteImage(recipe.getImageUrl());
             }
-
-            String imagePath = saveImage(image);
-            recipe.setImageUrl(imagePath);
+            String imageUrl = s3Service.uploadImage(image);
+            recipe.setImageUrl(imageUrl);
         }
 
         return recipeRepository.save(recipe);
@@ -105,33 +96,13 @@ public class RecipeService {
 
         // Delete image if exists
         if (recipe.getImageUrl() != null) {
-            try {
-                Files.deleteIfExists(Paths.get(recipe.getImageUrl()));
-            } catch (IOException e) {
-                // Log error but continue with deletion
-                System.err.println("Failed to delete image: " + e.getMessage());
-            }
+            s3Service.deleteImage(recipe.getImageUrl());
         }
 
         recipeRepository.delete(recipe);
     }
 
-    private String saveImage(MultipartFile image) throws IOException {
-        // Create upload directory if it doesn't exist
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
 
-        // Generate unique filename to prevent overwriting
-        String filename = UUID.randomUUID() + "_" + image.getOriginalFilename();
-        Path filePath = uploadPath.resolve(filename);
-
-        // Save the file
-        Files.copy(image.getInputStream(), filePath);
-
-        return filePath.toString();
-    }
 
     public RecipeDto convertToDto(Recipe recipe) {
         RecipeDto dto = new RecipeDto();

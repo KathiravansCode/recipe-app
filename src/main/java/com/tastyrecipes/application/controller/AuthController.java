@@ -55,10 +55,11 @@ public ResponseEntity<ApiResponse> register(@Valid @RequestBody UserDto userDto)
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse> login(@Valid @RequestBody AuthRequest authRequest) {
+        System.out.println("Before Authentication");
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(authRequest.getEmail(), authRequest.getPassword())
         );
-
+        System.out.println("After authentication");
         SecurityContextHolder.getContext().setAuthentication(authentication);
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
