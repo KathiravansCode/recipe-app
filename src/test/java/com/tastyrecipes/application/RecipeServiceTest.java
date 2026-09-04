@@ -9,7 +9,6 @@ import com.tastyrecipes.application.model.Recipe;
 import com.tastyrecipes.application.model.Review;
 import com.tastyrecipes.application.model.User;
 import com.tastyrecipes.application.repository.RecipeRepository;
-import com.tastyrecipes.application.service.S3Service;
 import com.tastyrecipes.application.service.RecipeService;
 import com.tastyrecipes.application.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -35,7 +35,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
-import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RecipeService Tests")
@@ -46,9 +45,6 @@ class RecipeServiceTest {
 
     @Mock
     private UserService userService;
-
-    @Mock
-    private S3Service s3Service;
 
     @InjectMocks
     private RecipeService recipeService;
@@ -61,12 +57,9 @@ class RecipeServiceTest {
     private Pageable pageable;
 
     @BeforeEach
-    void setUp() throws Exception {
-        lenient().doAnswer(invocation -> {
-            MultipartFile file = invocation.getArgument(0, MultipartFile.class);
-            String name = file.getOriginalFilename() == null ? "image" : file.getOriginalFilename();
-            return "https://example.com/uploads/" + name;
-        }).when(s3Service).uploadImage(any(MultipartFile.class));
+    void setUp() {
+        // Set upload dir via reflection (normally injected via @Value)
+        ReflectionTestUtils.setField(recipeService, "uploadDir", "test-uploads");
 
         testUser = new User();
         testUser.setId(1L);

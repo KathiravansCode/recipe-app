@@ -52,12 +52,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(ImageUploadException.class)
-    public ResponseEntity<ApiResponse> handleImageUploadException(ImageUploadException ex) {
-        ApiResponse response = new ApiResponse(false, ex.getMessage());
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse> handleGlobalException(Exception ex) {
         ApiResponse response = new ApiResponse(false, "An unexpected error occurred: " + ex.getMessage());
